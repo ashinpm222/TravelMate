@@ -9,24 +9,34 @@ const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
+// Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
   .then(async () => {
     console.log("MongoDB connected successfully!");
     console.log("Database name:", mongoose.connection.name);
 
-    const serverInfo = await mongoose.connection.db.admin().command({ hello: 1 });
-console.log("Backend replica set:", serverInfo.setName);
-console.log("Backend MongoDB server:", serverInfo.me);
+    const serverInfo = await mongoose.connection.db
+      .admin()
+      .command({ hello: 1 });
 
-const collections = await mongoose.connection.db.listCollections().toArray();
-console.log("Collections:", collections.map((collection) => collection.name));
+    console.log("Backend replica set:", serverInfo.setName);
+    console.log("Backend MongoDB server:", serverInfo.me);
+
+    const collections = await mongoose.connection.db
+      .listCollections()
+      .toArray();
+
+    console.log(
+      "Collections:",
+      collections.map((collection) => collection.name)
+    );
 
     const bookingCount = await mongoose.connection.db
-  .collection("bookings")
-  .countDocuments();
+      .collection("bookings")
+      .countDocuments();
 
-console.log("Total bookings in MongoDB:", bookingCount);
+    console.log("Total bookings in MongoDB:", bookingCount);
 
     const databases = await mongoose.connection.db
       .admin()
@@ -41,17 +51,22 @@ console.log("Total bookings in MongoDB:", bookingCount);
     console.error("MongoDB connection failed:", error);
   });
 
+// Middleware
 app.use(cors());
 app.use(express.json());
+
+// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/bookings", bookingRoutes);
 
+// Home Route
 app.get("/", (req, res) => {
   res.send("TravelMate backend is running!");
 });
 
-const PORT = 5000;
+// Render-compatible server port
+const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`TravelMate backend running on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`TravelMate backend running on port ${PORT}`);
 });
