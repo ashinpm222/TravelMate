@@ -1,0 +1,908 @@
+
+import { useState, useEffect } from "react";
+import heroImage from "./assets/hero-travel.jpg";
+import travelMateLogo from "./assets/travelmate-logo.png";
+import baliImage from "./assets/packages/bali.jpg";
+import dubaiImage from "./assets/packages/dubai.jpg";
+import switzerlandImage from "./assets/packages/switzerland.jpg";
+import maldivesImage from "./assets/packages/maldives.jpg";
+import parisImage from "./assets/packages/paris.jpg";
+import manaliImage from "./assets/packages/manali.jpg";
+import goaImage from "./assets/packages/goa.jpg";
+import japanImage from "./assets/packages/japan.jpg";
+import keralaImage from "./assets/packages/kerala.jpg";
+import "./App.css";
+
+const API_URL = "http://localhost:5000";
+
+const travelPackages = [
+  {
+    name: 'Bali',
+    image: baliImage,
+    icon: '🏝️',
+    duration: '5 Days / 4 Nights',
+    tagline: 'Tropical beaches & island adventures',
+    price: 25000,
+    description: 'Enjoy beautiful beaches, tropical scenery, local culture and unforgettable experiences.',
+  },
+  {
+    name: 'Dubai',
+    image: dubaiImage,
+    icon: '🏙️',
+    duration: '4 Days / 3 Nights',
+    tagline: 'Luxury, shopping & desert experiences',
+    price: 30000,
+    description: 'Experience modern architecture, luxury shopping, desert adventures and exciting city attractions.',
+  },
+  {
+    name: 'Switzerland',
+    image: switzerlandImage,
+    icon: '🏔️',
+    duration: '7 Days / 6 Nights',
+    tagline: 'Alpine views, lakes & mountain escapes',
+    price: 75000,
+    description: 'Discover beautiful mountains, peaceful lakes, scenic villages and breathtaking landscapes.',
+  },
+  {
+    name: 'Maldives',
+    image: maldivesImage,
+    icon: '🏝️',
+    duration: '5 Days / 4 Nights',
+    tagline: 'Turquoise lagoons & island relaxation',
+    price: 45000,
+    description: 'Relax by crystal-clear lagoons, discover beautiful beaches and enjoy peaceful island experiences.',
+  },
+  {
+    name: 'Paris',
+    image: parisImage,
+    icon: '🗼',
+    duration: '6 Days / 5 Nights',
+    tagline: 'Art, landmarks & romantic city walks',
+    price: 65000,
+    description: 'Explore famous landmarks, charming streets, museums and memorable Parisian sights.',
+  },
+  {
+    name: 'Manali',
+    image: manaliImage,
+    icon: '🏔️',
+    duration: '4 Days / 3 Nights',
+    tagline: 'Mountain views & Himalayan adventures',
+    price: 12000,
+    description: 'Enjoy scenic valleys, mountain views, local markets and refreshing Himalayan air.',
+  },
+  {
+    name: 'Goa',
+    image: goaImage,
+    icon: '🌴',
+    duration: '3 Days / 2 Nights',
+    tagline: 'Sunny beaches & coastal getaways',
+    price: 10000,
+    description: 'Discover sandy beaches, coastal culture, delicious food and relaxing seaside experiences.',
+  },
+  {
+    name: 'Japan',
+    image: japanImage,
+    icon: '🌸',
+    duration: '7 Days / 6 Nights',
+    tagline: 'Temples, cities & cultural discoveries',
+    price: 85000,
+    description: 'Experience vibrant cities, historic temples, beautiful gardens and Japanese culture.',
+  },
+  {
+    name: 'Kerala',
+    image: keralaImage,
+    icon: '🌿',
+    duration: '5 Days / 4 Nights',
+    tagline: 'Backwaters, greenery & peaceful escapes',
+    price: 18000,
+    description: 'Explore lush landscapes, peaceful backwaters, scenic hill stations and local traditions.',
+  },
+];
+
+function App() {
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [showBooking, setShowBooking] = useState(false);
+  const [bookingConfirmed, setBookingConfirmed] = useState(false);
+
+  const [numberOfPeople, setNumberOfPeople] = useState("");
+  const [travelDate, setTravelDate] = useState("");
+  const [bookingSubmitting, setBookingSubmitting] = useState(false);
+
+  const [showLogin, setShowLogin] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    () => Boolean(localStorage.getItem("token"))
+  );
+  const [showRegister, setShowRegister] = useState(false);
+  const [registerConfirmed, setRegisterConfirmed] = useState(false);
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  const [showMyBookings, setShowMyBookings] = useState(false);
+  const [myBookings, setMyBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsError, setBookingsError] = useState("");
+  const [cancellingBookingId, setCancellingBookingId] = useState(null);
+
+  const fetchMyBookings = async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setBookingsError("Please log in to view your bookings.");
+      setMyBookings([]);
+      return;
+    }
+
+    setBookingsLoading(true);
+    setBookingsError("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/bookings`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Could not load bookings");
+      }
+
+      setMyBookings(data);
+    } catch (error) {
+      setBookingsError(error.message);
+      setMyBookings([]);
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showBooking) {
+      document.getElementById("booking")?.scrollIntoView({
+        behavior: "smooth",
+      });
+    }
+  }, [showBooking]);
+
+  const handleBooking = async (e) => {
+    e.preventDefault();
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please log in before booking.");
+      setShowLogin(true);
+      return;
+    }
+
+    if (!selectedPackage) {
+      alert("Please select a travel package.");
+      return;
+    }
+
+    if (!travelDate || Number(numberOfPeople) < 1) {
+      alert("Please enter valid booking details.");
+      return;
+    }
+
+    setBookingSubmitting(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/bookings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          destination: selectedPackage,
+          travelDate,
+          numberOfPeople: Number(numberOfPeople),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Booking failed");
+        return;
+      }
+
+      setShowBooking(false);
+      setBookingConfirmed(true);
+      setNumberOfPeople("");
+      setTravelDate("");
+
+      if (showMyBookings) {
+        await fetchMyBookings();
+      }
+    } catch (error) {
+      alert("Could not connect to the server.");
+    } finally {
+      setBookingSubmitting(false);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Login failed");
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      setIsLoggedIn(true);
+
+      setShowLogin(false);
+      setLoginPassword("");
+      setMyBookings([]);
+      setShowMyBookings(false);
+
+      alert(`Welcome, ${data.user.name}!`);
+    } catch (error) {
+      alert("Could not connect to the server.");
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+
+    if (password !== confirmPassword) {
+      alert("Passwords do not match!");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Registration failed");
+        return;
+      }
+
+      setShowRegister(false);
+      setRegisterConfirmed(true);
+
+      setName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      alert("Could not connect to the server.");
+    }
+  };
+
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm("Are you sure you want to cancel this booking?")) {
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please log in to cancel a booking.");
+      return;
+    }
+
+    setCancellingBookingId(bookingId);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/bookings/${bookingId}/cancel`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Could not cancel booking");
+      }
+
+      setMyBookings((currentBookings) =>
+        currentBookings.map((booking) =>
+          booking._id === bookingId
+            ? { ...booking, status: "Cancelled" }
+            : booking
+        )
+      );
+      alert("Booking cancelled successfully!");
+    } catch (error) {
+      alert(error.message || "Could not connect to the server.");
+    } finally {
+      setCancellingBookingId(null);
+    }
+  };
+
+  const openPackage = (packageName) => {
+    setSelectedPackage(packageName);
+    setShowBooking(false);
+    setBookingConfirmed(false);
+  };
+
+  const openMyBookings = () => {
+    setShowMyBookings(true);
+    fetchMyBookings();
+
+    setTimeout(() => {
+      document.getElementById("my-bookings")?.scrollIntoView({
+        behavior: "smooth",
+      });
+    }, 100);
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <header>
+        <h1 className="travelmate-logo">
+          <img
+            src={travelMateLogo}
+            alt="TravelMate"
+            className="travelmate-logo-image"
+          />
+        </h1>
+
+        <nav>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            Home
+          </a>
+
+          <a href="#packages">
+            Packages
+          </a>
+
+          <a href="#about">
+            About
+          </a>
+
+          {!isLoggedIn && (
+            <>
+              <a
+                href="#login"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowRegister(false);
+                  setShowLogin(true);
+                }}
+              >
+                Login
+              </a>
+
+              <a
+                href="#register"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowLogin(false);
+                  setShowRegister(true);
+                }}
+              >
+                Register
+              </a>
+            </>
+          )}
+
+          {isLoggedIn && (
+            <>
+              <a
+                href="#my-bookings"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openMyBookings();
+                }}
+              >
+                My Bookings
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  setIsLoggedIn(false);
+                  setMyBookings([]);
+                  setShowMyBookings(false);
+                  setShowBooking(false);
+                  setBookingConfirmed(false);
+                  setShowLogin(false);
+                  setShowRegister(false);
+                  alert("You have logged out successfully!");
+                }}
+              >
+                Logout
+              </button>
+            </>
+          )}
+        </nav>
+      </header>
+
+      <main>
+        {/* Hero Section */}
+        <section
+          className="hero"
+          style={{ backgroundImage: `url(${heroImage})` }}
+        >
+          <div className="hero-content">
+            <h2>Explore the World</h2>
+
+            <p>
+              Discover amazing places and unforgettable journeys.
+            </p>
+
+            <button
+              onClick={() =>
+                document.getElementById("packages")?.scrollIntoView({
+                  behavior: "smooth",
+                })
+              }
+            >
+              Explore Packages
+            </button>
+          </div>
+        </section>
+
+        {/* Packages Section */}
+        <section className="packages" id="packages">
+          <h2>Popular Travel Packages</h2>
+
+          <div className="package-list">
+            {travelPackages.map((travelPackage) => (
+              <article className="package-card" key={travelPackage.name}>
+                <div className="package-image-wrap">
+                  <img
+                    className="package-image"
+                    src={travelPackage.image}
+                    alt={`${travelPackage.name} travel destination`}
+                    loading="lazy"
+                  />
+                  <span className="package-duration">{travelPackage.duration}</span>
+                </div>
+                <div className="package-card-content">
+                  <h3>{travelPackage.name}</h3>
+                  <p className="package-tagline">{travelPackage.tagline}</p>
+                  <div className="package-card-bottom">
+                    <div className="package-price-block">
+                      <span className="package-price-label">Starting from</span>
+                      <p className="price">
+                        ₹{travelPackage.price.toLocaleString("en-IN")}
+                        <span className="package-price-unit"> / person</span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="package-view-button"
+                      onClick={() => openPackage(travelPackage.name)}
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* Package Details */}
+        {selectedPackage && (
+          <section className="package-details">
+            <h2>{selectedPackage} Travel Package</h2>
+
+            {travelPackages
+              .filter((travelPackage) => travelPackage.name === selectedPackage)
+              .map((travelPackage) => (
+                <div key={travelPackage.name}>
+                  <p><strong>Duration:</strong> {travelPackage.duration}</p>
+                  <p>
+                    <strong>Starting Price:</strong> ₹
+                    {travelPackage.price.toLocaleString("en-IN")} per traveler
+                  </p>
+                  <p>{travelPackage.description}</p>
+                </div>
+              ))}
+
+            <button
+              className="book-button"
+              onClick={() => setShowBooking(true)}
+            >
+              Book Now
+            </button>
+
+            <button
+              className="close-button"
+              onClick={() => {
+                setSelectedPackage(null);
+                setShowBooking(false);
+              }}
+            >
+              Close
+            </button>
+          </section>
+        )}
+
+        {/* Booking Form */}
+        {showBooking && selectedPackage && (
+          <section className="booking-section" id="booking">
+            <div className="booking-form">
+              <h2>Book Your Trip</h2>
+
+              <p>
+                Booking for: <strong>{selectedPackage}</strong>
+              </p>
+
+              <form onSubmit={handleBooking}>
+                <label>Full Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter your name"
+                  required
+                />
+
+                <label>Email</label>
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  required
+                />
+
+                <label>Number of Travelers</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Number of travelers"
+                  value={numberOfPeople}
+                  onChange={(e) => setNumberOfPeople(e.target.value)}
+                  required
+                />
+
+                <label>Travel Date</label>
+                <input
+                  type="date"
+                  min={new Date().toLocaleDateString("en-CA")}
+                  value={travelDate}
+                  onChange={(e) => setTravelDate(e.target.value)}
+                  required
+                />
+
+                <button type="submit" disabled={bookingSubmitting}>
+                  {bookingSubmitting
+                    ? "Saving Booking..."
+                    : "Confirm Booking"}
+                </button>
+              </form>
+
+              <button
+                className="close-button"
+                onClick={() => setShowBooking(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Booking Success */}
+        {bookingConfirmed && (
+          <section className="confirmation-section">
+            <div className="confirmation-card">
+              <h2>🎉 Booking Request Submitted!</h2>
+
+              <p>
+                Your <strong>{selectedPackage}</strong> trip
+                has been booked successfully.
+              </p>
+
+              <p>
+                Your booking status is Pending.
+              </p>
+
+              <button
+                onClick={() => {
+                  setBookingConfirmed(false);
+                  setSelectedPackage(null);
+
+                  document.getElementById("packages")?.scrollIntoView({
+                    behavior: "smooth",
+                  });
+                }}
+              >
+                Back to Packages
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* My Bookings */}
+        {showMyBookings && (
+          <section
+            className="my-bookings-section"
+            id="my-bookings"
+          >
+            <h2>✈️ My Bookings</h2>
+
+            {bookingsLoading ? (
+              <p>Loading your bookings...</p>
+            ) : bookingsError ? (
+              <p>{bookingsError}</p>
+            ) : myBookings.length === 0 ? (
+              <p>No bookings found.</p>
+            ) : (
+              myBookings.map((booking) => (
+                <div
+                  key={booking._id}
+                  className="booking-card"
+                >
+                  <h3>📍 {booking.destination}</h3>
+
+                  <p>
+                    Travel Date:{" "}
+                    {new Date(
+                      booking.travelDate
+                    ).toLocaleDateString("en-IN")}
+                  </p>
+
+                  <p>
+                    Travelers: {booking.numberOfPeople}
+                  </p>
+
+                  <p>
+                    Total Price: ₹
+                    {booking.totalPrice.toLocaleString("en-IN")}
+                  </p>
+
+                  <p>
+                    Status: {booking.status}
+                  </p>
+
+                  {booking.status !== "Cancelled" && (
+                    <button
+                      type="button"
+                      onClick={() => handleCancelBooking(booking._id)}
+                      disabled={cancellingBookingId !== null}
+                      style={{
+                        backgroundColor: "#dc2626",
+                        color: "white",
+                        marginTop: "10px",
+                      }}
+                    >
+                      {cancellingBookingId === booking._id
+                        ? "Cancelling..."
+                        : "Cancel Booking"}
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+
+            <button
+              onClick={fetchMyBookings}
+              disabled={bookingsLoading}
+            >
+              Refresh Bookings
+            </button>
+
+            <button
+              className="close-button"
+              onClick={() => setShowMyBookings(false)}
+            >
+              Close
+            </button>
+          </section>
+        )}
+
+        {/* About Section */}
+        <section className="about" id="about">
+          <h2>About TravelMate</h2>
+
+          <p>
+            TravelMate helps you discover exciting destinations
+            and plan memorable journeys with easy-to-explore
+            travel packages.
+          </p>
+
+          <p>
+            Choose a destination, explore the package details,
+            and book your trip with just a few simple steps.
+          </p>
+        </section>
+
+        {/* Login Section */}
+        {showLogin && (
+          <section className="login-section" id="login">
+            <div className="login-form">
+              <h2>Login to TravelMate</h2>
+
+              <form onSubmit={handleLogin}>
+                <label>Email</label>
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  required
+                />
+
+                <label>Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  required
+                />
+
+                <button type="submit">
+                  Login
+                </button>
+              </form>
+
+              <p className="switch-form">
+                Don't have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogin(false);
+                    setShowRegister(true);
+                  }}
+                >
+                  Create one
+                </button>
+              </p>
+
+              <button
+                className="close-button"
+                onClick={() => setShowLogin(false)}
+              >
+                Close
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Registration Section */}
+        {showRegister && (
+          <section
+            className="register-section"
+            id="register"
+          >
+            <div className="register-form">
+              <h2>Create Your TravelMate Account</h2>
+
+              <form onSubmit={handleRegister}>
+                <label>Full Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+
+                <label>Email</label>
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+
+                <label>Password</label>
+                <input
+                  type="password"
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+
+                <label>Confirm Password</label>
+                <input
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+
+                <button type="submit">
+                  Create Account
+                </button>
+              </form>
+
+              <p className="switch-form">
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRegister(false);
+                    setShowLogin(true);
+                  }}
+                >
+                  Login
+                </button>
+              </p>
+
+              <button
+                className="close-button"
+                onClick={() => setShowRegister(false)}
+              >
+                Close
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Registration Success */}
+        {registerConfirmed && (
+          <section className="register-confirmation-section">
+            <div className="register-confirmation-card">
+              <h2>🎉 Account Created Successfully!</h2>
+
+              <p>
+                Welcome to <strong>TravelMate</strong>!
+              </p>
+
+              <p>
+                Your account has been created successfully.
+              </p>
+
+              <button
+                onClick={() => {
+                  setRegisterConfirmed(false);
+                  setShowLogin(true);
+                }}
+              >
+                Go to Login
+              </button>
+            </div>
+          </section>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer>
+        <p>© 2026 TravelMate. All rights reserved.</p>
+      </footer>
+    </div>
+  );
+}
+
+export default App;
